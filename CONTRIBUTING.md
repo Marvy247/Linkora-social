@@ -289,3 +289,7 @@ The `.github/CODEOWNERS` file maps directories to their maintainers:
 ## Security
 
 If you discover a security vulnerability, please review our [Security Policy](SECURITY.md) for responsible disclosure guidelines. Do not open public issues for security concerns.
+
+## Code of Conduct
+
+This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code. Please report unacceptable behavior to [conduct@linkora.social](mailto:conduct@linkora.social).
