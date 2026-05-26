@@ -55,8 +55,14 @@ fi
 echo "[1/8] Starting local Stellar sandbox container..."
 stellar --config-dir "$CFG_DIR" container start local --name "$CONTAINER_NAME"
 
-# Wait briefly for RPC/friendbot readiness.
-sleep 4
+# Wait for friendbot to be ready (up to 60 s).
+echo "  Waiting for friendbot..."
+for i in $(seq 1 60); do
+  if curl -sf "http://localhost:8000/friendbot" >/dev/null 2>&1; then
+    break
+  fi
+  sleep 1
+done
 
 echo "[2/8] Generating funded identities..."
 for name in linkora_alice linkora_bob linkora_issuer; do
