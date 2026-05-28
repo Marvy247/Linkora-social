@@ -4,12 +4,14 @@
   "private": true,
   "main": "./src/index.ts",
   "scripts": {
-    "build": "echo \"Run generate.sh to regenerate the client from the contract WASM\""
+    "build": "echo \"Run generate.sh to regenerate the client from the contract WASM\"",
+    "docs": "typedoc --out docs src/index.ts --tsconfig tsconfig.json"
   },
   "dependencies": {
     "@stellar/stellar-sdk": "^12.3.0"
   },
   "devDependencies": {
+    "typedoc": "^0.26.11",
     "typescript": "^5.8.3"
   }
 }
