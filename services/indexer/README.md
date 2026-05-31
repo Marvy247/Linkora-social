@@ -70,13 +70,58 @@ CREATE TABLE likes (
 );
 ```
 
-## Setup
+## Local Setup (Docker)
+
+The fastest way to run the indexer and PostgreSQL together is Docker Compose.
+
+### Prerequisites
+
+- [Docker](https://docs.docker.com/get-docker/) with Compose v2
+
+### Steps
+
+```bash
+# 1. Copy and edit environment variables
+cp .env.example .env
+# Edit .env — set CONTRACT_ID, START_LEDGER, and STELLAR_RPC_URL at minimum
+
+# 2. Start both services (migrations run automatically on first boot)
+docker compose up --build
+```
+
+The indexer API will be available at `http://localhost:3000`.
+PostgreSQL is exposed on port `5432`.
+
+To stop and remove containers:
+
+```bash
+docker compose down
+```
+
+To also remove the database volume:
+
+```bash
+docker compose down -v
+```
+
+### Environment Variables
+
+See [`.env.example`](.env.example) for all required variables.
+
+| Variable | Description |
+|----------|-------------|
+| `DATABASE_URL` | PostgreSQL connection string |
+| `STELLAR_RPC_URL` | Soroban RPC endpoint |
+| `CONTRACT_ID` | Deployed Linkora contract address |
+| `START_LEDGER` | Ledger sequence to start indexing from |
+| `PORT` | API port (default: `3000`) |
+
+## Manual Setup
 
 ### Prerequisites
 
 - Node.js 18+
 - PostgreSQL 14+
-- Stellar RPC endpoint
 
 ### Installation
 
@@ -87,23 +132,18 @@ npm install
 ### Database Setup
 
 ```bash
-# Run migrations
-npm run migrate
-
-# Or manually
-psql -U postgres -d linkora -f migrations/002_posts.sql
-psql -U postgres -d linkora -f migrations/004_tips_likes.sql
+# Apply migrations manually
+psql "$DATABASE_URL" -f migrations/001_profiles.sql
+psql "$DATABASE_URL" -f migrations/002_posts.sql
+psql "$DATABASE_URL" -f migrations/004_tips_likes.sql
+psql "$DATABASE_URL" -f migrations/005_pools.sql
 ```
 
 ### Configuration
 
-Create `.env` file:
-
-```env
-DATABASE_URL=postgresql://user:password@localhost:5432/linkora
-STELLAR_RPC_URL=https://soroban-testnet.stellar.org
-CONTRACT_ID=CXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-START_LEDGER=12345
+```bash
+cp .env.example .env
+# Edit .env with your values
 ```
 
 ## Running
