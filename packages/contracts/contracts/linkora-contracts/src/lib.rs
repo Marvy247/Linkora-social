@@ -448,6 +448,32 @@ impl LinkoraContract {
             .unwrap_or(0)
     }
 
+    pub fn delete_profile(env: Env, user: Address) {
+        user.require_auth();
+        let key = StorageKey::Profile(user.clone());
+        let profile: Profile = env
+            .storage()
+            .persistent()
+            .get(&key)
+            .unwrap_or_else(|| panic!("profile does not exist"));
+
+        env.storage()
+            .persistent()
+            .remove(&StorageKey::UsernameIndex(profile.username));
+        env.storage().persistent().remove(&key);
+
+        let count: u64 = env
+            .storage()
+            .instance()
+            .get(&PROFILE_CREATED_CT)
+            .unwrap_or(0);
+        if count > 0 {
+            env.storage()
+                .instance()
+                .set(&PROFILE_CREATED_CT, &(count - 1));
+        }
+    }
+
     pub fn get_address_by_username(env: Env, username: String) -> Option<Address> {
         let key = StorageKey::UsernameIndex(username);
         let result: Option<Address> = env.storage().persistent().get(&key);

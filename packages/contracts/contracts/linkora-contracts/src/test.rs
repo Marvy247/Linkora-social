@@ -2105,6 +2105,77 @@ fn test_pool_threshold_updated_event() {
     assert_eq!(pool.threshold, 1);
 }
 
+// ── Issue #124: delete_post success path, unauthorized caller, event emission ─
+
+#[test]
+fn test_delete_post_success() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, _, _) = setup_contract(&env);
+
+    let author = Address::generate(&env);
+    let post_id = client.create_post(&author, &String::from_str(&env, "Hello world"));
+
+    client.delete_post(&author, &post_id);
+
+    assert!(
+        client.get_post(&post_id).is_none(),
+        "get_post must return None after author deletes their own post"
+    );
+}
+
+#[test]
+#[should_panic(expected = "only author can delete post")]
+fn test_delete_post_non_author_panics() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, _, _) = setup_contract(&env);
+
+    let author = Address::generate(&env);
+    let non_author = Address::generate(&env);
+    let post_id = client.create_post(&author, &String::from_str(&env, "Hello world"));
+
+    client.delete_post(&non_author, &post_id);
+}
+
+#[test]
+fn test_delete_post_emits_post_deleted_event() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, _, _) = setup_contract(&env);
+
+    let author = Address::generate(&env);
+    let post_id = client.create_post(&author, &String::from_str(&env, "Event test"));
+
+    client.delete_post(&author, &post_id);
+
+    let all_events = env.events().all();
+    let events = all_events.events();
+    assert!(
+        !events.is_empty(),
+        "PostDeleted event must be emitted on successful deletion"
+    );
+}
+
+#[test]
+fn test_delete_post_get_post_count_unaffected() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, _, _) = setup_contract(&env);
+
+    let author = Address::generate(&env);
+    client.create_post(&author, &String::from_str(&env, "Post 1"));
+    let post_id2 = client.create_post(&author, &String::from_str(&env, "Post 2"));
+
+    assert_eq!(client.get_post_count(), 2);
+    client.delete_post(&author, &post_id2);
+    assert_eq!(
+        client.get_post_count(),
+        2,
+        "get_post_count tracks creation, not existence — deletion must not decrement it"
+    );
+}
+
 // ── Issue #314: PostDeleted event tests ───────────────────────────────────────
 
 #[test]
@@ -2225,6 +2296,89 @@ fn test_tip_cooldown_allows_after_window() {
 
     let post = client.get_post(&post_id).unwrap();
     assert_eq!(post.tip_total, 200, "tip_total must reflect both tips");
+}
+
+// ── Issue #321: profile_count decrement on profile deletion ───────────────────
+
+#[test]
+fn test_profile_count_decrements_on_delete() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, _, _) = setup_contract(&env);
+
+    let user = Address::generate(&env);
+    let token = Address::generate(&env);
+
+    client.set_profile(&user, &String::from_str(&env, "alice"), &token);
+    assert_eq!(client.get_profile_count(), 1, "count must be 1 after creation");
+
+    client.delete_profile(&user);
+    assert_eq!(
+        client.get_profile_count(),
+        0,
+        "count must decrement to 0 after profile deletion"
+    );
+    assert!(
+        client.get_profile(&user).is_none(),
+        "get_profile must return None after deletion"
+    );
+}
+
+#[test]
+fn test_profile_count_never_below_zero() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, _, _) = setup_contract(&env);
+
+    let user = Address::generate(&env);
+    let token = Address::generate(&env);
+
+    client.set_profile(&user, &String::from_str(&env, "alice"), &token);
+    client.delete_profile(&user);
+    assert_eq!(
+        client.get_profile_count(),
+        0,
+        "count must not go below zero"
+    );
+}
+
+#[test]
+fn test_delete_profile_frees_username() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, _, _) = setup_contract(&env);
+
+    let user1 = Address::generate(&env);
+    let user2 = Address::generate(&env);
+    let token = Address::generate(&env);
+
+    client.set_profile(&user1, &String::from_str(&env, "alice"), &token);
+    client.delete_profile(&user1);
+
+    assert!(
+        client
+            .get_address_by_username(&String::from_str(&env, "alice"))
+            .is_none(),
+        "username must be freed after profile deletion"
+    );
+
+    client.set_profile(&user2, &String::from_str(&env, "alice"), &token);
+    assert_eq!(
+        client.get_address_by_username(&String::from_str(&env, "alice")),
+        Some(user2),
+        "freed username must be claimable by another user"
+    );
+}
+
+#[test]
+#[should_panic(expected = "profile does not exist")]
+fn test_delete_profile_non_existent_panics() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, _, _) = setup_contract(&env);
+
+    let user = Address::generate(&env);
+    client.delete_profile(&user);
 }
 
 // ── Issue #132: PROFILE_CREATED_CT semantics ──────────────────────────────────
