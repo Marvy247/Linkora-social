@@ -8,10 +8,33 @@
     "build:contracts": "pnpm --filter contracts build",
     "lint": "turbo run lint",
     "test": "turbo run test",
-    "format": "turbo run format"
+    "test:integration": "pnpm --filter contracts test:integration",
+    "format": "turbo run format",
+    "prepare": "husky"
   },
   "devDependencies": {
+    "@stellar/stellar-sdk": "^15.1.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.57.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.2.10",
+    "prettier": "^3.0.0",
+    "ts-node": "^10.9.2",
     "turbo": "latest"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{js,jsx,json,md,yaml,yml}": [
+      "prettier --write"
+    ],
+    "*.rs": [
+      "cargo fmt --check"
+    ]
   },
   "packageManager": "pnpm@9.15.9"
 }
