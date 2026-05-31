@@ -1,0 +1,308 @@
+openapi: "3.1.0"
+info:
+  title: Linkora Indexer API
+  version: "0.1.0"
+  description: REST API for querying indexed on-chain data from the Linkora protocol.
+
+servers:
+  - url: http://localhost:3001/api
+    description: Local development server
+
+paths:
+  /profiles/{address}:
+    get:
+      summary: Get profile by address
+      operationId: getProfile
+      tags: [Profiles]
+      parameters:
+        - $ref: "#/components/parameters/address"
+      responses:
+        "200":
+          description: Profile found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /posts:
+    get:
+      summary: List posts
+      operationId: listPosts
+      tags: [Posts]
+      parameters:
+        - name: author
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter posts by author Stellar address.
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+      responses:
+        "200":
+          description: Paginated list of posts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PostList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /posts/{id}:
+    get:
+      summary: Get post by ID
+      operationId: getPost
+      tags: [Posts]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Numeric post ID (as a string to support large integers).
+      responses:
+        "200":
+          description: Post found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Post"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /follows/{address}/followers:
+    get:
+      summary: Get followers of an address
+      operationId: getFollowers
+      tags: [Follows]
+      parameters:
+        - $ref: "#/components/parameters/address"
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+      responses:
+        "200":
+          description: Paginated list of followers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FollowerList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /follows/{address}/following:
+    get:
+      summary: Get accounts followed by an address
+      operationId: getFollowing
+      tags: [Follows]
+      parameters:
+        - $ref: "#/components/parameters/address"
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+      responses:
+        "200":
+          description: Paginated list of following
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FollowingList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /pools/{id}:
+    get:
+      summary: Get pool by ID
+      operationId: getPool
+      tags: [Pools]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Pool symbol identifier.
+      responses:
+        "200":
+          description: Pool found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pool"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+components:
+  parameters:
+    address:
+      name: address
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Stellar account address (G…).
+    limit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+      description: Maximum number of items to return.
+    offset:
+      name: offset
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+      description: Number of items to skip before returning results.
+
+  schemas:
+    Profile:
+      type: object
+      required: [address, username, creator_token, updated_ledger]
+      properties:
+        address:
+          type: string
+        username:
+          type: string
+        creator_token:
+          type: string
+        updated_ledger:
+          type: integer
+
+    Post:
+      type: object
+      required: [id, author, deleted, tip_total, like_count, created_ledger]
+      properties:
+        id:
+          type: string
+          description: Numeric post ID serialised as a string.
+        author:
+          type: string
+        deleted:
+          type: boolean
+        tip_total:
+          type: string
+          description: Cumulative tip amount serialised as a string.
+        like_count:
+          type: string
+          description: Total likes serialised as a string.
+        created_ledger:
+          type: integer
+        deleted_ledger:
+          type: integer
+          nullable: true
+
+    PostList:
+      type: object
+      required: [posts, total, limit, offset, has_more]
+      properties:
+        posts:
+          type: array
+          items:
+            $ref: "#/components/schemas/Post"
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+        has_more:
+          type: boolean
+
+    FollowerList:
+      type: object
+      required: [address, followers, total, limit, offset, has_more]
+      properties:
+        address:
+          type: string
+        followers:
+          type: array
+          items:
+            type: string
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+        has_more:
+          type: boolean
+
+    FollowingList:
+      type: object
+      required: [address, following, total, limit, offset, has_more]
+      properties:
+        address:
+          type: string
+        following:
+          type: array
+          items:
+            type: string
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+        has_more:
+          type: boolean
+
+    Pool:
+      type: object
+      required: [pool_id, token, balance, admins, threshold, created_ledger, updated_ledger]
+      properties:
+        pool_id:
+          type: string
+        token:
+          type: string
+        balance:
+          type: string
+          description: Current balance serialised as a string.
+        admins:
+          type: array
+          items:
+            type: string
+        threshold:
+          type: integer
+          description: Minimum number of admin signatures required for withdrawal.
+        created_ledger:
+          type: integer
+        updated_ledger:
+          type: integer
+
+    Error:
+      type: object
+      required: [error, code]
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+
+  responses:
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: Resource not found
+            code: NOT_FOUND
+    BadRequest:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: limit must be a positive integer
+            code: INVALID_QUERY

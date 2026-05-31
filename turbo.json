@@ -5,9 +5,9 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**", "target/**", ".next/**", ".expo/**"]
     },
-    "dev": {
-      "persistent": true,
-      "cache": false
+    "dev": { 
+      "persistent": true, 
+      "cache": false 
     },
     "lint": {
       "dependsOn": ["^build"]
@@ -20,22 +20,6 @@
     },
     "format": {
       "outputs": []
-    },
-    "linkora-mobile#build": {
-      "dependsOn": [],
-      "outputs": ["dist/**", ".expo/**"],
-      "cache": false
-    },
-    "linkora-mobile#dev": {
-      "persistent": true,
-      "cache": false
-    },
-    "linkora-mobile#lint": {
-      "dependsOn": []
-    },
-    "linkora-mobile#test": {
-      "dependsOn": [],
-      "cache": false
     }
   }
 }
