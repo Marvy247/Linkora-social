@@ -1,26 +1,85 @@
 import React, { useMemo } from "react";
-import { Text, StyleSheet, ScrollView } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { useTheme } from "../../theme/useTheme";
+import { useProfile } from "../../hooks/useProfile";
+import { useFeed } from "../../hooks/useFeed";
+import { useWallet } from "../../hooks/useWallet";
+import ProfileHeader from "../../components/ProfileHeader";
+import { PostCard } from "../../components/PostCard";
 
 type ProfileParams = {
   address: string;
 };
 
 export default function ProfileDetailScreen() {
+  const router = useRouter();
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { address } = useLocalSearchParams<ProfileParams>();
+  const { address: me } = useWallet();
+
+  const { profile, loading, error, followerCount, followingCount, isFollowing, toggleFollow, refresh } =
+    useProfile(address ?? "");
+
+  const { posts, loading: postsLoading, refresh: refreshPosts } = useFeed();
+
+  const userPosts = posts.filter((p) => p.author === address);
+
+  if (loading) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color={theme.colors.brand.primary} />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.centered}>
+        <Text style={styles.errorText}>{error}</Text>
+        <Pressable onPress={refresh} style={styles.retryButton} accessibilityRole="button">
+          <Text style={styles.retryText}>Retry</Text>
+        </Pressable>
+      </View>
+    );
+  }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.label}>Profile</Text>
-      <Text style={styles.address}>
-        {address ? `${address.slice(0, 8)}…${address.slice(-6)}` : "—"}
-      </Text>
-      <Text style={styles.placeholder}>Profile detail coming soon.</Text>
-    </ScrollView>
+    <View style={styles.container}>
+      {profile && (
+        <ProfileHeader
+          profile={profile}
+          followerCount={followerCount}
+          followingCount={followingCount}
+          isFollowing={isFollowing}
+          isOwnProfile={me === address}
+          onFollowersPress={() => router.push(`/profile/followers?address=${address}` as Parameters<typeof router.push>[0])}
+          onFollowingPress={() => router.push(`/profile/following?address=${address}` as Parameters<typeof router.push>[0])}
+          onEditPress={() => router.push("/settings" as Parameters<typeof router.push>[0])}
+          onToggleFollow={toggleFollow}
+        />
+      )}
+
+      <FlatList
+        data={userPosts}
+        keyExtractor={(item) => String(item.id)}
+        renderItem={({ item }) => <PostCard post={item} />}
+        onRefresh={() => {
+          refreshPosts();
+          refresh();
+        }}
+        refreshing={postsLoading}
+        contentContainerStyle={styles.list}
+        ListEmptyComponent={() => (
+          <View style={styles.empty}>
+            <Text style={styles.emptyTitle}>No posts yet</Text>
+            <Text style={styles.emptyText}>This user hasn't posted anything.</Text>
+          </View>
+        )}
+      />
+    </View>
   );
 }
 
@@ -30,26 +89,42 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       flex: 1,
       backgroundColor: theme.colors.surface.background,
     },
-    content: {
+    centered: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.colors.surface.background,
+    },
+    errorText: {
+      color: theme.colors.semantic.error,
+    },
+    retryButton: {
+      marginTop: 12,
+      backgroundColor: theme.colors.brand.primary,
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      borderRadius: theme.radius.full,
+    },
+    retryText: {
+      color: theme.colors.text.onBrand,
+      fontWeight: "700",
+    },
+    list: {
+      paddingBottom: 48,
+      backgroundColor: theme.colors.surface.background,
+    },
+    empty: {
       padding: 24,
+      alignItems: "center",
     },
-    label: {
-      fontSize: 12,
-      color: theme.colors.text.secondary,
-      textTransform: "uppercase",
-      letterSpacing: 1,
-      marginBottom: 4,
-    },
-    address: {
+    emptyTitle: {
+      color: theme.colors.text.primary,
       fontSize: 16,
       fontWeight: "700",
-      color: theme.colors.text.primary,
-      marginBottom: 16,
-      fontFamily: "monospace",
     },
-    placeholder: {
-      fontSize: 14,
+    emptyText: {
       color: theme.colors.text.secondary,
+      marginTop: 8,
     },
   });
 }
