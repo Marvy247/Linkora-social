@@ -1,32 +1,87 @@
-# Linkora-socials
+# Linkora
 
 [![CI](https://github.com/ijayabby/Linkora-social/actions/workflows/ci.yml/badge.svg)](https://github.com/ijayabby/Linkora-social/actions/workflows/ci.yml)
 
 Linkora-socials is an early-stage open source SocialFi project built on Stellar with Soroban smart contracts. The current repository is focused on the protocol foundation: a Rust contract workspace that models creator profiles, follow relationships, social posts, token tipping, and community pools.
 
-This project is intended to serve as a starting point for contributors exploring social and creator-economy primitives on Stellar.
+Linkora is an open-source SocialFi platform built on Stellar and Soroban. It combines social networking with on-chain financial primitives — creator profiles, follow graphs, posts, token tipping, community pools, and a mini app ecosystem — for creators, communities, and investors.
+
+---
 
 ## Status
 
-Linkora-socials is in the foundation stage.
+The project spans multiple packages at different stages of maturity:
 
-- The repository currently contains the Soroban contracts workspace.
-- Core social and token interaction primitives are implemented and covered by unit tests.
-- Frontend, indexing, and backend services are not yet included in this repository.
+| Package | Status |
+|---|---|
+| `packages/contracts` | ✅ Implemented — core social + DeFi primitives, unit tested |
+| `packages/sdk` | 🔧 In progress — typed contract client for browser and Node.js |
+| `apps/web` | 🔧 In progress — Next.js web frontend |
+| `apps/mobile` | 🔧 In progress — Expo / React Native mobile app |
+| `services/indexer` | 🔧 In progress — off-chain event indexer with PostgreSQL + search API |
+| `examples/mini-apps` | ✅ Example mini apps available |
 
-If you are submitting this project to a Stellar open source contribution platform, this repository should be presented as a protocol prototype rather than a complete end-user application.
+---
 
-## What Linkora-socials Implements Today
+## What Linkora Implements
 
-The main contract in `packages/contracts/contracts/linkora-contracts` currently supports:
+### Smart Contracts (`packages/contracts`)
 
 - Profile registration and updates
-- Follow relationships between accounts
-- On-chain post creation
-- Tipping posts with SEP-41 compatible tokens
-- Community pool deposits and withdrawals
+- Follow / unfollow relationships with block support
+- On-chain post creation, deletion, and likes
+- Tipping posts with SEP-41 compatible tokens (protocol fee applied)
+- Community pool deposits and M-of-N admin withdrawals
+- Block / unblock events
 
-These primitives provide a minimal base for experimenting with social-financial interactions on Soroban.
+### Web App (`apps/web`)
+
+- Next.js 15 frontend with Tailwind CSS
+- Freighter wallet integration
+- Onboarding flow (install → connect → fund → profile)
+- Explore page with post search
+- Input validation and sanitisation on all forms
+
+### Mobile App (`apps/mobile`)
+
+- Expo / React Native app with Expo Router file-based navigation
+- Bottom tab navigation: Feed, Explore, Pools, Mini Apps, Profile
+- Freighter and WalletConnect wallet support
+- Mini app browser with sandboxed bridge API
+- Deep link handling (`linkora://post/:id`, `linkora://pool/:id`, `linkora://profile/:address`)
+
+### Indexer (`services/indexer`)
+
+- Subscribes to Soroban contract events via Stellar RPC
+- Indexes post content into PostgreSQL for full-text search
+- Exposes a REST search API consumed by the web and mobile frontends
+
+### SDK (`packages/sdk`)
+
+- Typed `LinkoraClient` for browser and Node.js
+- Methods aligned with the contract ABI (`getProfile`, `getPost`, `getFollowing`, etc.)
+
+### Mini Apps (`examples/mini-apps`)
+
+- Sandboxed web apps running inside the Linkora mobile client
+- Bridge API: `wallet.getAddress`, `wallet.sign`, `wallet.signTransaction`, `profile.get`
+- Example: Creator Token dashboard and tip flow
+
+---
+
+## Documentation
+
+- **[System Architecture](./docs/ARCHITECTURE.md)** — Components, data flows, and technology choices
+- **[Design System](./docs/design/README.md)** — UI/UX specifications and brand identity
+- **[Mobile UI Spec](./docs/design/MOBILE_SPEC.md)** — Screen inventory, components, tokens, accessibility
+- **[Mobile Developer Guide](./docs/mobile/DEVELOPER_GUIDE.md)** — Expo setup, simulators, EAS builds
+- **[Indexer Design](./docs/indexer/INDEXER_DESIGN.md)** — Event indexing strategy and search API design
+- **[Mini Apps Developer Guide](./docs/mini-apps/DEVELOPER_GUIDE.md)** — Build and submit a Linkora mini app
+- **[Mini Apps Bridge API](./docs/mini-apps/BRIDGE_API.md)** — Bridge method reference with types and examples
+- **[Event Schema](./packages/contracts/contracts/linkora-contracts/EVENTS.md)** — Contract event definitions for indexers and clients
+- **[Security Policy](./SECURITY.md)** — Vulnerability disclosure guidance
+
+---
 
 ## Documentation
 
@@ -41,32 +96,24 @@ These primitives provide a minimal base for experimenting with social-financial 
 ├── Makefile
 ├── package.json
 ├── pnpm-workspace.yaml
-├── turbo.json
-└── packages
-    └── contracts
-        ├── Cargo.toml
-        ├── package.json
-        └── contracts
-            └── linkora-contracts
-                ├── Cargo.toml
-                ├── Makefile
-                └── src
-                    ├── lib.rs
-                    └── test.rs
+└── turbo.json
 ```
+
+---
 
 ## Tech Stack
 
-- Stellar Soroban smart contracts
-- Rust
-- `soroban-sdk`
-- Cargo workspace
-- `pnpm` workspaces
-- Turborepo for task orchestration
-
-## Smart Contract Overview
-
-The primary contract is `LinkoraContract`.
+| Layer | Technology |
+|---|---|
+| Smart contracts | Rust, Soroban SDK, Stellar |
+| Web frontend | Next.js 15, React 19, Tailwind CSS 4 |
+| Mobile | Expo (React Native), Expo Router, EAS Build |
+| Wallet (web) | Stellar Freighter API |
+| Wallet (mobile) | Freighter, WalletConnect (via `@walletconnect/sign-client`) |
+| Indexer | Node.js, TypeScript, Express, PostgreSQL |
+| SDK | TypeScript, `@stellar/stellar-sdk` |
+| Monorepo | pnpm workspaces, Turborepo |
+| Build tooling | Cargo workspace, `stellar-cli` |
 
 ### Data Models
 
@@ -171,20 +218,27 @@ pub enum StorageKey {
 
 Install the following before working on the project:
 
-- Node.js 18+ recommended
-- `pnpm` 9+
-- Rust toolchain
-- Stellar CLI with Soroban support
+- **Node.js** 18+
+- **pnpm** 9+ — `npm install -g pnpm`
+- **Rust toolchain** — `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
+- **Wasm target** — `rustup target add wasm32-unknown-unknown`
+- **Stellar CLI** — `cargo install --locked stellar-cli`
+- **PostgreSQL** 14+ (for the indexer)
+- **Expo CLI** (for mobile) — `npm install -g expo-cli`
 
-Example installation for the Stellar CLI:
-
-```bash
-cargo install --locked stellar-cli
-```
-
-If your environment uses the older package naming, `soroban-cli` may also be valid depending on the installed tooling version.
+---
 
 ## Getting Started
+
+### One-command setup
+
+```bash
+./scripts/setup.sh
+```
+
+The script checks prerequisites, installs JS dependencies, and builds the contracts. It is idempotent — safe to re-run after pulling changes.
+
+### Manual setup
 
 ### One-command setup
 
@@ -204,53 +258,66 @@ The script is idempotent — safe to run again after pulling new changes. It wil
 pnpm install
 ```
 
-### 2. Build the Contracts
-
-From the repository root:
+#### 2. Build the contracts
 
 ```bash
 pnpm build:contracts
 ```
 
-Or from the contracts package:
-
-```bash
-cd packages/contracts
-pnpm build
-```
-
-### 3. Run the Contract Tests
-
-From the repository root:
+#### 3. Run contract tests
 
 ```bash
 pnpm --filter contracts test
+# or
+cd packages/contracts && cargo test
 ```
 
-Or:
+#### 4. Start the web frontend
 
 ```bash
-cd packages/contracts
-cargo test
+cd apps/web
+pnpm dev
+# Opens http://localhost:3000
 ```
+
+#### 5. Start the mobile app
+
+```bash
+cd apps/mobile
+pnpm start
+# Then press 'a' for Android emulator or 'i' for iOS simulator
+```
+
+See [docs/mobile/DEVELOPER_GUIDE.md](./docs/mobile/DEVELOPER_GUIDE.md) for full simulator setup and EAS build instructions.
+
+#### 6. Start the indexer
+
+```bash
+cd services/indexer
+cp .env.example .env   # fill in DATABASE_URL and SOROBAN_RPC_URL
+pnpm dev
+```
+
+See [docs/indexer/INDEXER_DESIGN.md](./docs/indexer/INDEXER_DESIGN.md) for PostgreSQL schema and environment variables.
+
+---
 
 ## Available Scripts
 
-At the repository root:
+From the repository root:
 
-- `pnpm dev`
-- `pnpm build`
-- `pnpm build:contracts`
-- `pnpm lint`
-- `pnpm test`
-- `pnpm format`
+| Script | Description |
+|---|---|
+| `pnpm dev` | Start all services in development mode |
+| `pnpm build` | Build all packages |
+| `pnpm build:contracts` | Build Soroban contracts only |
+| `pnpm lint` | Run lint across all packages |
+| `pnpm test` | Run all test suites |
+| `pnpm format` | Format all source files |
 
-Inside `packages/contracts`:
+---
 
-- `pnpm build`
-- `pnpm test`
-- `pnpm dev`
-- `pnpm format`
+## Smart Contract API Reference
 
 ## Makefile Targets
 
@@ -264,15 +331,13 @@ The repository root also includes a `Makefile` with thin wrappers around the exi
 
 ## Testing
 
-The contract test suite currently covers:
+### Data Models
 
-- profile creation
-- follow graph updates
-- post creation
-- tipping flow with token transfers
-- community pool deposit and withdrawal flow
+- `Profile` — address, username, creator token address
+- `Post` — id, author, content, tip total, timestamp, like count
+- `Pool` — token address, balance, admin set, threshold
 
-Tests are located in `packages/contracts/contracts/linkora-contracts/src/test.rs`.
+### Key Functions
 
 Sandbox-backed integration tests with real transaction signing are available under `tests/integration`.
 
@@ -332,21 +397,13 @@ A global context-driven notification system is available in `packages/web`. It h
 
 ## Contributor Guide
 
-Contributions are welcome, especially in these areas:
+Full API table in the [Contract API Reference](#) section of the upstream README.
 
-- contract hardening and security review
-- event design and indexing strategy
-- access control and governance for pool withdrawals
-- better storage layout and scalability improvements
-- frontend and API integration work
-- documentation and developer tooling
+---
 
-When contributing:
+## Deployment
 
-- keep changes focused and reviewable
-- prefer small pull requests
-- add or update tests for behavior changes
-- document any new contract method or breaking interface change
+Deploy to Stellar Testnet:
 
 ## Security
 
@@ -401,7 +458,7 @@ The script prints the deployed `contract_id` to stdout on success.
 
 ## Current Limitations
 
-This repository is a prototype and should not be treated as production-ready infrastructure yet.
+> Fund the deployer account first: [Stellar Testnet Friendbot](https://friendbot.stellar.org)
 
 - Pool withdrawal uses M-of-N admin authorization; more advanced governance may be needed for production.
 - Contract storage layout has not been optimized for scale.
@@ -410,17 +467,59 @@ This repository is a prototype and should not be treated as production-ready inf
 
 ## Roadmap
 
-Planned next steps include:
+1. **Contract hardening** — security review, edge-case coverage, upgrade path
+2. **SDK completion** — full typed client aligned with contract ABI
+3. **Indexer production-readiness** — pagination, rate limiting, event replay
+4. **Mobile feature parity** — Pools screen, Post detail, Profile detail, compose flow
+5. **Web feature parity** — Feed, profile pages, tip modal, compose modal
+6. **Mini app registry** — on-chain or off-chain registry for third-party mini apps
+7. **Mainnet deployment** — governance, treasury, and fee configuration
 
-1. Strengthen contract authorization and safety checks
-2. Add events and indexer-friendly contract patterns
-3. Introduce deployment and environment tooling
-4. Build application-facing SDK or client helpers
-5. Add web and backend components around the contract layer
+---
 
-## Why This Project Matters
+## Contributing
 
-Linkora-socials explores how Stellar can support more than payments by combining social interaction with programmable asset flows. The goal is to make creator economies, community incentives, and lightweight SocialFi mechanics easier to build on Soroban.
+Contributions are welcome in all areas:
+
+- Contract hardening and security review
+- Event design and indexing strategy
+- Mobile and web feature implementation
+- SDK client improvements
+- Documentation and developer tooling
+
+### How to contribute
+
+1. Fork the repository and clone it locally
+2. Create a branch: `git checkout -b feature/your-task-name`
+3. Make your changes and commit clearly: `git commit -m "feat: short description"`
+4. Push and open a Pull Request with a clear description
+
+### Community
+
+Join the Linkora community on Telegram: [https://t.me/+13csp8G4ccRhY2Zk](https://t.me/+13csp8G4ccRhY2Zk)
+
+---
+
+## Testing
+
+| Suite | Command |
+|---|---|
+| Contract unit tests | `pnpm --filter contracts test` |
+| SDK tests | `pnpm --filter sdk test` |
+| Indexer tests | `cd services/indexer && pnpm test` |
+| Mobile snapshot tests | `cd apps/mobile && pnpm test` |
+| Web E2E (Playwright) | `cd apps/web && pnpm test:e2e` |
+| Integration tests | `pnpm test:integration` |
+
+---
+
+## Security
+
+See [SECURITY.md](./SECURITY.md) for vulnerability disclosure guidance and scope.
+
+## Code of Conduct
+
+This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md). Report unacceptable behavior to [conduct@linkora.social](mailto:conduct@linkora.social).
 
 ## License
 
