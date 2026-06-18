@@ -28,7 +28,7 @@ pub enum StorageKey {
     FollowersPos(Address, Address), // persistent: (followee, follower) -> u32 position in idx
     GraphMigrated(Address),         // persistent: user -> bool (migration tracking)
     // ── End-to-end encrypted direct messages ──────────────────────────────
-    DmPublicKey(Address),      // persistent: user -> X25519 public key for E2EE DMs
+    DmPublicKey(Address), // persistent: user -> X25519 public key for E2EE DMs
 }
 
 // ── Instance-storage key constants (small scalars, not contracttype) ──────────
