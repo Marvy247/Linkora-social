@@ -6,6 +6,11 @@
  * ledger) so the stream can resume after a restart.
  */
 
+/**
+ */
+
+import { logger } from "./logger";
+
 export interface RawEvent {
   type: string;
   ledger: number;
@@ -27,8 +32,10 @@ export interface StreamConfig {
 
 export type EventHandler = (event: RawEvent) => Promise<void>;
 
-const DEFAULT_POLL_INTERVAL_MS = 5_000;
+const DEFAULT_POLL_INTERVAL_MS = 5000;
 const MAX_EVENTS_PER_PAGE = 100;
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 async function fetchEvents(
   rpcUrl: string,
@@ -83,11 +90,31 @@ async function fetchEvents(
   };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+
+function sleep(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, ms);
+
+    const onAbort = () => {
+      clearTimeout(timer);
+      resolve();
+    };
+
+    if (signal.aborted) {
+      clearTimeout(timer);
+      resolve();
+      return;
+    }
+
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 /**
- * Stream Soroban contract events and invoke `handler` for each.
- *
- * Runs until `signal` is aborted. Maintains a cursor so restarts resume
- * without re-processing events. Returns the latest ledger seen.
+ * Streams Soroban events until aborted.
  */
 export async function streamEvents(
   config: StreamConfig,
@@ -95,12 +122,11 @@ export async function streamEvents(
   signal: AbortSignal
 ): Promise<void> {
   const pollMs = config.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS;
+
   let cursor: string | undefined;
   let startLedger = config.startLedger;
 
-  console.log(
-    `[stream] Starting from ledger ${startLedger}, contract=${config.contractId}`
-  );
+  logger.info({ startLedger, contractId: config.contractId }, "[stream] Starting event stream");
 
   while (!signal.aborted) {
     try {
@@ -113,6 +139,7 @@ export async function streamEvents(
 
       for (const event of events) {
         if (signal.aborted) break;
+
         await handler(event);
         cursor = event.pagingToken;
       }
@@ -123,17 +150,14 @@ export async function streamEvents(
 
       startLedger = latestLedger;
     } catch (err) {
-      console.error("[stream] Error fetching events:", err);
+      logger.error(
+        { error: err instanceof Error ? err.message : String(err) },
+        "[stream] Error fetching events"
+      );
     }
 
-    await new Promise<void>((resolve) => {
-      const timer = setTimeout(resolve, pollMs);
-      signal.addEventListener("abort", () => {
-        clearTimeout(timer);
-        resolve();
-      });
-    });
+    await sleep(pollMs, signal);
   }
 
-  console.log("[stream] Stopped.");
+  logger.info("[stream] Stopped.");
 }

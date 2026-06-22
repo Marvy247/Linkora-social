@@ -12,9 +12,13 @@
  *   START_LEDGER      - Ledger sequence to start streaming from
  *   POLL_INTERVAL_MS  - (optional) polling interval in ms, default 5000
  */
+/**
+ * Linkora Indexer — entry point.
+ */
 
 import { Pool } from "pg";
 import { streamEvents, RawEvent } from "./stream";
+import { logger, healthState } from "./logger";
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
@@ -28,6 +32,7 @@ const DATABASE_URL = requireEnv("DATABASE_URL");
 const STELLAR_RPC_URL = requireEnv("STELLAR_RPC_URL");
 const CONTRACT_ID = requireEnv("CONTRACT_ID");
 const START_LEDGER = parseInt(requireEnv("START_LEDGER"), 10);
+
 const POLL_INTERVAL_MS = process.env["POLL_INTERVAL_MS"]
   ? parseInt(process.env["POLL_INTERVAL_MS"], 10)
   : undefined;
@@ -50,8 +55,9 @@ async function ensureEventsTable(): Promise<void> {
       indexed_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
+
   await pgPool.query(`
-    CREATE INDEX IF NOT EXISTS idx_events_ledger      ON events (ledger);
+    CREATE INDEX IF NOT EXISTS idx_events_ledger ON events (ledger);
     CREATE INDEX IF NOT EXISTS idx_events_contract_id ON events (contract_id);
   `);
 }
@@ -82,47 +88,68 @@ async function handleEvent(event: RawEvent): Promise<void> {
   await persistEvent(event);
 
   const eventType = event.topic[0];
-  console.log(`[indexer] ledger=${event.ledger} type=${eventType} tx=${event.txHash}`);
+  logger.info({ ledger: event.ledger, type: eventType, txHash: event.txHash }, "Event indexed");
 }
 
-// ── Graceful shutdown ─────────────────────────────────────────────────────────
+// ── Lifecycle control ────────────────────────────────────────────────────────
 
 const abortController = new AbortController();
+let isRunning = false;
 
 function shutdown(signal: string): void {
-  console.log(`[indexer] Received ${signal}, shutting down…`);
+  logger.info({ signal }, "Received signal, shutting down");
   abortController.abort();
 }
+
+// ── Graceful shutdown hooks ──────────────────────────────────────────────────
 
 process.on("SIGTERM", () => shutdown("SIGTERM"));
 process.on("SIGINT", () => shutdown("SIGINT"));
 
-// ── Main ──────────────────────────────────────────────────────────────────────
+// ── Core runner ──────────────────────────────────────────────────────────────
 
-async function main(): Promise<void> {
-  console.log("[indexer] Starting Linkora indexer");
-  console.log(`[indexer] RPC:      ${STELLAR_RPC_URL}`);
-  console.log(`[indexer] Contract: ${CONTRACT_ID}`);
-  console.log(`[indexer] From ledger: ${START_LEDGER}`);
+export async function startIndexing(): Promise<void> {
+  if (isRunning) return;
+  isRunning = true;
+
+  logger.info("Starting Linkora indexer");
+  logger.info({ rpcUrl: STELLAR_RPC_URL }, "RPC endpoint");
+  logger.info({ contractId: CONTRACT_ID }, "Contract");
+  logger.info({ startLedger: START_LEDGER }, "Starting from ledger");
 
   await ensureEventsTable();
+  healthState.dbConnected = true;
 
-  await streamEvents(
-    {
-      rpcUrl: STELLAR_RPC_URL,
-      contractId: CONTRACT_ID,
-      startLedger: START_LEDGER,
-      pollIntervalMs: POLL_INTERVAL_MS,
-    },
-    handleEvent,
-    abortController.signal
-  );
-
-  await pgPool.end();
-  console.log("[indexer] Shutdown complete.");
+  try {
+    healthState.rpcConnected = true;
+    await streamEvents(
+      {
+        rpcUrl: STELLAR_RPC_URL,
+        contractId: CONTRACT_ID,
+        startLedger: START_LEDGER,
+        pollIntervalMs: POLL_INTERVAL_MS,
+      },
+      handleEvent,
+      abortController.signal
+    );
+  } finally {
+    // CRITICAL: always close DB so Jest can exit
+    healthState.dbConnected = false;
+    healthState.rpcConnected = false;
+    await pgPool.end();
+    isRunning = false;
+    logger.info("Shutdown complete");
+  }
 }
 
-main().catch((err) => {
-  console.error("[indexer] Fatal error:", err);
-  process.exit(1);
-});
+// ── Auto-run ONLY outside tests ──────────────────────────────────────────────
+
+if (process.env.NODE_ENV !== "test") {
+  startIndexing().catch((err) => {
+    logger.fatal(
+      { error: err instanceof Error ? err.message : String(err) },
+      "Fatal indexer error"
+    );
+    process.exit(1);
+  });
+}
