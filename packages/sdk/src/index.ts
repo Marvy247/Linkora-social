@@ -5,3 +5,11 @@ export * from "./client";
 export * from "./errors";
 export * from "./mini-apps/validateManifest";
 export * as dm from "./dm";
+export { LinkoraEventSubscriber } from "./events/subscriber";
+export type { LinkoraEventHandlers, LinkoraEventSubscriberConfig } from "./events/subscriber";
+export {
+  LocalStorageCursorStore,
+  MemoryCursorStore,
+  createDefaultCursorStore,
+} from "./events/cursor";
+export type { CursorStore } from "./events/cursor";

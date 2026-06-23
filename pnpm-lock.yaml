@@ -123,6 +123,9 @@ importers:
       "@stellar/freighter-api":
         specifier: ^2.0.0
         version: 2.0.0
+      linkora-sdk:
+        specifier: workspace:*
+        version: link:../../packages/sdk
       next:
         specifier: 15.5.19
         version: 15.5.19(@playwright/test@1.60.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
