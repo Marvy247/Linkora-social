@@ -175,10 +175,6 @@ process.on("SIGINT", () => void shutdown("SIGINT"));
 
 // ── Core runner ──────────────────────────────────────────────────────────────
 
-export async function startIndexing(): Promise<void> {
-  if (isRunning) return;
-  isRunning = true;
-
 async function main(): Promise<void> {
   console.log("[indexer] Starting Linkora indexer");
   console.log(`[indexer] RPC:        ${STELLAR_RPC_URL}`);
@@ -230,3 +226,8 @@ async function main(): Promise<void> {
   await pgPool.end();
   console.log("[indexer] Shutdown complete.");
 }
+
+main().catch((err) => {
+  console.error("[indexer] Fatal error:", err);
+  process.exit(1);
+});

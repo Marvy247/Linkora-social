@@ -1,9 +1,8 @@
 import express, { Request, Response, NextFunction } from "express";
-import rateLimit from "express-rate-limit";
 import { Pool as PgPool } from "pg";
 import { Database } from "../db";
-import { logger, requestLoggingMiddleware, getHealth } from "../logger";
-import { rateLimitRead, rateLimitWrite, rateLimit } from "../middleware/rateLimit";
+import { logger } from "../logger";
+import { rateLimitRead, rateLimitWrite } from "../middleware/rateLimit";
 import { requireStellarAuth } from "../middleware/stellarAuth";
 import { createProfilesRouter } from "./routes/profiles";
 import { createPostsRouter } from "./routes/posts";
